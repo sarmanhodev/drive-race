@@ -51,85 +51,54 @@ def _caixa_pixelada(tela, rect, cor_borda=BORDA, cor_fundo=FUNDO):
             pygame.draw.rect(tela, cor_borda, (x, y, 4, 4))
 
 
-def desenhar_pontuacao(tela, pontuacao):
-
-    # ======================================================
-    # CONFIGURAÇÕES DO PLACAR 8 BITS
-    # ======================================================
-
-    PLACAR_X = 15
-    PLACAR_Y = 10
-
-    PLACAR_LARGURA = 300
-    PLACAR_ALTURA = 85
-
-    COR_FUNDO = (15, 22, 38)
-    COR_BORDA = (247, 196, 63)
-    COR_TEXTO = (237, 238, 218)
-
-    # ======================================================
-    # SOMBRA PIXELADA
-    # ======================================================
-
-    pygame.draw.rect(
-        tela, (8, 12, 22), (PLACAR_X + 5, PLACAR_Y + 5, PLACAR_LARGURA, PLACAR_ALTURA)
-    )
-
-    # ======================================================
-    # MOLDURA AMARELA
-    # ======================================================
-
-    pygame.draw.rect(
-        tela, COR_BORDA, (PLACAR_X, PLACAR_Y, PLACAR_LARGURA, PLACAR_ALTURA)
-    )
-
-    # ======================================================
-    # FUNDO AZUL-ESCURO
-    # ======================================================
-
-    pygame.draw.rect(
-        tela,
-        COR_FUNDO,
-        (PLACAR_X + 5, PLACAR_Y + 5, PLACAR_LARGURA - 10, PLACAR_ALTURA - 10),
-    )
-
-    # ======================================================
-    # DETALHES PIXELADOS NOS CANTOS
-    # ======================================================
-
-    for x in (PLACAR_X + 12, PLACAR_X + PLACAR_LARGURA - 18):
-        for y in (PLACAR_Y + 12, PLACAR_Y + PLACAR_ALTURA - 18):
-            pygame.draw.rect(tela, COR_BORDA, (x, y, 6, 6))
-
-    # ======================================================
-    # TEXTO PIXELADO AMPLIADO
-    # ======================================================
-
-    fonte = pygame.font.Font(None, 32)
-
-    texto = fonte.render(f"SCORE {pontuacao.pontos:06d}", False, COR_TEXTO)
-
-    # Amplia sem suavização para preservar o estilo 8 bits.
-    texto = pygame.transform.scale(
-        texto, (texto.get_width() * 2, texto.get_height() * 2)
-    )
-
-    # Ajusta automaticamente se ultrapassar a moldura.
-    largura_maxima = PLACAR_LARGURA - 35
-
-    if texto.get_width() > largura_maxima:
-
-        proporcao = largura_maxima / texto.get_width()
-
-        texto = pygame.transform.scale(
-            texto, (largura_maxima, max(1, int(texto.get_height() * proporcao)))
+def _texto_card(texto, tamanho, cor, largura_maxima):
+    """Cria texto pixelado, reduzindo-o quando necessário para caber no card."""
+    imagem = _texto_pixelado(texto, tamanho, cor)
+    if imagem.get_width() > largura_maxima:
+        proporcao = largura_maxima / imagem.get_width()
+        imagem = pygame.transform.scale(
+            imagem,
+            (int(largura_maxima), max(1, round(imagem.get_height() * proporcao))),
         )
+    return imagem
 
-    texto_rect = texto.get_rect(
-        center=(PLACAR_X + PLACAR_LARGURA // 2, PLACAR_Y + PLACAR_ALTURA // 2)
-    )
 
-    tela.blit(texto, texto_rect)
+def desenhar_pontuacao(tela, pontuacao):
+    """Desenha a pontuação no card superior da barra lateral (x >= 500)."""
+    largura_lateral = tela.get_width() - 500
+    if largura_lateral < 55:
+        return
+
+    margem = 7
+    x = 500 + margem
+    y = 12
+    largura = largura_lateral - margem * 2
+    altura = 112
+
+    fundo = (15, 22, 38)
+    borda = (49, 129, 203)
+    borda_interna = (30, 70, 117)
+    amarelo = (255, 209, 68)
+
+    # Sombra, contorno e fundo: geometria simples, sem imagens externas.
+    pygame.draw.rect(tela, (7, 12, 23), (x + 3, y + 3, largura, altura))
+    pygame.draw.rect(tela, borda, (x, y, largura, altura), 3)
+    pygame.draw.rect(tela, fundo, (x + 3, y + 3, largura - 6, altura - 6))
+    pygame.draw.rect(tela, borda_interna, (x + 6, y + 6, largura - 12, altura - 12), 1)
+
+    centro_x = x + largura // 2
+    titulo = _texto_card("PONTOS", 15, BRANCO, largura - 18)
+    tela.blit(titulo, titulo.get_rect(center=(centro_x, y + 25)))
+
+    pygame.draw.rect(tela, borda_interna, (x + 12, y + 43, largura - 24, 2))
+
+    # Exibe os pontos reais, sem limitar a quantidade de dígitos.
+    numero = _texto_card(str(pontuacao.pontos), 29, amarelo, largura - 18)
+    tela.blit(numero, numero.get_rect(center=(centro_x, y + 76)))
+
+    # Pequenos detalhes luminosos reforçam a estética arcade.
+    pygame.draw.rect(tela, amarelo, (x + 12, y + altura - 12, 5, 3))
+    pygame.draw.rect(tela, amarelo, (x + largura - 17, y + altura - 12, 5, 3))
 
 
 def desenhar_aviso_fase(tela, largura, nome_fase):
