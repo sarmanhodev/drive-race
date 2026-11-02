@@ -1,10 +1,8 @@
-"""Cards de fase e velocidade do Drive Race, em pixel art 8 bits.
+"""Painel arcade Drive Race: cards FASE e VELOCIDADE.
 
-Compatível com a chamada original do main.py:
-    desenhar_velocimetro(tela, largura, velocidade, nome_fase)
-O card de pontos continua sendo desenhado pelo interface.py.
+Compatível com main.py: desenhar_velocimetro(tela, largura, velocidade, nome_fase).
+Combina com os cards PONTOS e RECORDE do interface.py.
 """
-
 import pygame
 from dificuldade import FASES
 
@@ -12,13 +10,14 @@ LARGURA_AREA_JOGO = 500
 VELOCIDADE_MAXIMA_JOGO = 10
 VELOCIDADE_MAXIMA_KMH = 200
 
-COR_FUNDO = (15, 22, 38)
-COR_BORDA = (49, 129, 203)
-COR_BORDA_INTERNA = (30, 70, 117)
-COR_SOMBRA = (7, 12, 23)
-COR_TEXTO = (248, 242, 211)
+COR_FUNDO = (9, 20, 41)
+COR_BORDA = (23, 154, 242)
+COR_BRILHO = (66, 212, 255)
+COR_INTERNA = (26, 77, 137)
+COR_TEXTO = (246, 248, 252)
+COR_OURO = (255, 209, 40)
 COR_APAGADO = (49, 61, 76)
-COR_VERDE = (65, 190, 85)
+COR_VERDE = (65, 220, 95)
 COR_AMARELO = (245, 205, 45)
 COR_VERMELHO = (235, 65, 55)
 COR_ROXO = (185, 139, 244)
@@ -35,11 +34,57 @@ DIGITOS = {
     "8": ("111", "101", "111", "101", "111"),
     "9": ("111", "101", "111", "001", "111"),
 }
+_FONTES = {}
+
+
+def _fonte(tamanho):
+    if tamanho not in _FONTES:
+        _FONTES[tamanho] = pygame.font.Font(None, tamanho)
+    return _FONTES[tamanho]
+
+
+def _texto(tela, texto, cx, cy, tamanho, cor, largura_maxima):
+    """Reduz o tamanho da fonte antes de renderizar: não distorce pixels."""
+    texto = str(texto)
+    tamanho = int(tamanho)
+    while tamanho > 11 and _fonte(tamanho).size(texto)[0] > largura_maxima:
+        tamanho -= 1
+    imagem = _fonte(tamanho).render(texto, False, cor)
+    tela.blit(imagem, imagem.get_rect(center=(int(cx), int(cy))))
+
+
+def _card(tela, x, y, largura, altura, titulo, largo):
+    r = pygame.Rect(int(x), int(y), int(largura), int(altura))
+    pygame.draw.rect(tela, (3, 9, 19), r.move(4, 4))
+    pygame.draw.rect(tela, COR_BORDA, r, 4)
+    pygame.draw.rect(tela, COR_FUNDO, r.inflate(-8, -8))
+    pygame.draw.rect(tela, COR_INTERNA, r.inflate(-14, -14), 2)
+    for px in (r.left + 9, r.right - 13):
+        pygame.draw.rect(tela, COR_BRILHO, (px, r.top + 6, 5, 3))
+        pygame.draw.rect(tela, COR_OURO, (px, r.bottom - 12, 4, 4))
+    _texto(tela, titulo, r.centerx, r.top + (26 if largo else 24),
+           29 if largo else 23, COR_TEXTO, r.width - 18)
+    linha_y = r.top + (48 if largo else 43)
+    pygame.draw.rect(tela, COR_INTERNA, (r.left + 13, linha_y, r.width - 26, 3))
+    pygame.draw.rect(tela, COR_BRILHO, (r.left + 21, linha_y, max(0, r.width - 42), 1))
+    return r, linha_y
+
+
+def _numero_pixelado(tela, numero, cx, y, cor, escala):
+    texto = str(numero)
+    largura_total = len(texto) * (4 * escala) - escala
+    x0 = int(cx - largura_total / 2)
+    for i, digito in enumerate(texto):
+        for linha, bits in enumerate(DIGITOS.get(digito, ())):
+            for coluna, bit in enumerate(bits):
+                if bit == '1':
+                    pygame.draw.rect(tela, cor,
+                                     (x0 + i * 4 * escala + coluna * escala,
+                                      y + linha * escala, escala, escala))
 
 
 def converter_velocidade(velocidade):
-    percentual = max(0.0, min(1.0, velocidade / VELOCIDADE_MAXIMA_JOGO))
-    return percentual * VELOCIDADE_MAXIMA_KMH
+    return max(0.0, min(1.0, velocidade / VELOCIDADE_MAXIMA_JOGO)) * VELOCIDADE_MAXIMA_KMH
 
 
 def obter_cor_velocidade(velocidade_kmh):
@@ -50,140 +95,91 @@ def obter_cor_velocidade(velocidade_kmh):
     return COR_VERMELHO
 
 
-def _texto_pixelado(tela, texto, tamanho, cor, centro_x, y, largura_maxima=None):
-    fonte = pygame.font.Font(None, tamanho)
-    base = fonte.render(str(texto), False, cor)
-    largura, altura = base.get_width() * 2, base.get_height() * 2
-    if largura_maxima is not None and largura > largura_maxima:
-        fator = largura_maxima / largura
-        largura = max(1, int(largura * fator))
-        altura = max(1, int(altura * fator))
-    imagem = pygame.transform.scale(base, (largura, altura))
-    tela.blit(imagem, imagem.get_rect(midtop=(centro_x, y)))
-
-
-def _numero_pixelado(tela, numero, centro_x, y, cor, escala=5):
-    caracteres = str(numero)
-    largura_digito = 3 * escala
-    espaco = escala
-    largura_total = len(caracteres) * largura_digito + (len(caracteres) - 1) * espaco
-    x_inicial = centro_x - largura_total // 2
-    for indice, caractere in enumerate(caracteres):
-        matriz = DIGITOS.get(caractere)
-        if matriz is None:
-            continue
-        x = x_inicial + indice * (largura_digito + espaco)
-        for linha, bits in enumerate(matriz):
-            for coluna, bit in enumerate(bits):
-                if bit == "1":
-                    pygame.draw.rect(tela, cor, (x + coluna * escala, y + linha * escala, escala, escala))
-
-
-def _cor_fase(nome_fase):
-    nome = str(nome_fase).upper()
-    if "ALTA" in nome or "EXTREMA" in nome or "VERMELHA" in nome:
+def _cor_fase(nome):
+    nome = str(nome).upper()
+    if any(p in nome for p in ('ALTA', 'EXTREMA', 'VERMELHA')):
         return COR_VERMELHO
-    if "INTENSO" in nome or "RUSH" in nome or "PESADO" in nome:
+    if any(p in nome for p in ('INTENSO', 'RUSH', 'PESADO')):
         return COR_AMARELO
-    if "CAOS" in nome or "IMPOSSIVEL" in nome:
+    if any(p in nome for p in ('CAOS', 'IMPOSSIVEL')):
         return COR_ROXO
     return COR_VERDE
 
 
-def _linhas_fase(nome_fase):
-    nome = " ".join(str(nome_fase).upper().strip().split()) or "NORMAL"
-    palavras = nome.split()
-    if len(palavras) <= 1:
-        return (nome,)
-    cortes = [(" ".join(palavras[:i]), " ".join(palavras[i:])) for i in range(1, len(palavras))]
-    return min(cortes, key=lambda par: max(len(par[0]), len(par[1])))
-
-
-def _desenhar_card(tela, x, y, largura, altura, titulo):
-    pygame.draw.rect(tela, COR_SOMBRA, (x + 3, y + 3, largura, altura))
-    pygame.draw.rect(tela, COR_BORDA, (x, y, largura, altura), 3)
-    pygame.draw.rect(tela, COR_FUNDO, (x + 3, y + 3, largura - 6, altura - 6))
-    pygame.draw.rect(tela, COR_BORDA_INTERNA, (x + 6, y + 6, largura - 12, altura - 12), 1)
-    centro_x = x + largura // 2
-    _texto_pixelado(tela, titulo, 15, COR_TEXTO, centro_x, y + 14, largura - 16)
-    pygame.draw.rect(tela, COR_BORDA_INTERNA, (x + 12, y + 43, largura - 24, 2))
-    return centro_x
+def _linhas_fase(nome, largura, tamanho):
+    """Divide nomes longos sem deixar as palavras ilegíveis."""
+    palavras = str(nome).upper().split()
+    if not palavras:
+        return ['NORMAL']
+    linha = ' '.join(palavras)
+    if _fonte(tamanho).size(linha)[0] <= largura:
+        return [linha]
+    if len(palavras) == 1:
+        return [linha]
+    cortes = [(' '.join(palavras[:i]), ' '.join(palavras[i:]))
+              for i in range(1, len(palavras))]
+    return list(min(cortes, key=lambda par: max(_fonte(tamanho).size(par[0])[0],
+                                               _fonte(tamanho).size(par[1])[0])))
 
 
 def desenhar_velocimetro(tela, largura, velocidade, nome_fase):
-    """Desenha os cards FASE e VELOCIDADE abaixo do card PONTOS.
-
-    O número da fase vem da lista oficial FASES, sem mudar o main.py.
-    """
+    """Desenha FASE e VELOCIDADE entre PONTOS e RECORDE."""
     largura_painel = min(largura, tela.get_width()) - LARGURA_AREA_JOGO
     if largura_painel < 55:
         return
-
-    margem = 7
-    x = LARGURA_AREA_JOGO + margem
-    card_largura = largura_painel - 2 * margem
+    x = LARGURA_AREA_JOGO + 8
+    card_largura = largura_painel - 16
+    largo = card_largura >= 155
     altura_tela = tela.get_height()
 
-    # O card PONTOS do interface.py termina em y=124.
-    fase_y = 138
-    fase_altura = 151
-    velocidade_y = 303
-    velocidade_altura = 184
-    if altura_tela < velocidade_y + velocidade_altura + 5:
+    # Mesmas posições usadas em interface.py para evitar sobreposições.
+    pontos_fim = 12 + (136 if largo else 112)
+    recorde_inicio = altura_tela - (166 if largo else 128) - 16
+    fase_y = pontos_fim + 14
+    fase_h = 148 if largo else 151
+    velocidade_y = fase_y + fase_h + 14
+    velocidade_h = min(188 if largo else 184, recorde_inicio - velocidade_y - 14)
+    if velocidade_h < 145:
         return
 
-    centro_x = _desenhar_card(tela, x, fase_y, card_largura, fase_altura, "FASE")
-    numero_fase = next(
-        (indice for indice, fase in enumerate(FASES, start=1) if fase["nome"] == nome_fase),
-        1,
-    )
-    _texto_pixelado(
-        tela, f"{numero_fase:02d} / {len(FASES):02d}", 25,
-        COR_AMARELO, centro_x, fase_y + 57, card_largura - 14,
-    )
+    fase, linha_fase = _card(tela, x, fase_y, card_largura, fase_h, 'FASE', largo)
+    numero_fase = next((i for i, f in enumerate(FASES, 1) if f['nome'] == nome_fase), 1)
+    _texto(tela, f'{numero_fase:02d} / {len(FASES):02d}', fase.centerx,
+           linha_fase + (33 if largo else 32), 44 if largo else 30,
+           COR_OURO, fase.width - 18)
+
     cor_fase = _cor_fase(nome_fase)
-    for indice, linha in enumerate(_linhas_fase(nome_fase)):
-        _texto_pixelado(
-            tela, linha, 13, cor_fase, centro_x,
-            fase_y + 100 + indice * 17, card_largura - 14,
-        )
-    pygame.draw.rect(tela, cor_fase, (centro_x - 4, fase_y + fase_altura - 12, 8, 4))
+    faixa = pygame.Rect(fase.left + 10, fase.bottom - 47, fase.width - 20, 32)
+    pygame.draw.rect(tela, cor_fase, faixa, 2)
+    linhas = _linhas_fase(nome_fase, faixa.width - 10, 21 if largo else 16)
+    tamanho = 21 if largo else 16
+    espacamento = 15 if len(linhas) > 1 else 0
+    inicio = faixa.centery - (len(linhas) - 1) * espacamento / 2
+    for i, linha in enumerate(linhas):
+        _texto(tela, linha, faixa.centerx, inicio + i * espacamento,
+               tamanho, COR_TEXTO, faixa.width - 10)
 
-    centro_x = _desenhar_card(
-        tela, x, velocidade_y, card_largura, velocidade_altura, "VELOCIDADE"
-    )
-    velocidade_kmh = converter_velocidade(velocidade)
-    cor_velocidade = obter_cor_velocidade(velocidade_kmh)
-    _numero_pixelado(
-        tela, f"{round(velocidade_kmh):03d}",
-        centro_x, velocidade_y + 59, cor_velocidade, escala=5,
-    )
-    _texto_pixelado(
-        tela, "KM/H", 13, COR_TEXTO, centro_x, velocidade_y + 92,
-        card_largura - 18,
-    )
+    vel, linha_vel = _card(tela, x, velocidade_y, card_largura,
+                           velocidade_h, 'VELOCIDADE', largo)
+    kmh = converter_velocidade(velocidade)
+    escala = 7 if largo else 5
+    _numero_pixelado(tela, f'{round(kmh):03d}', vel.centerx,
+                     linha_vel + 15, obter_cor_velocidade(kmh), escala)
+    _texto(tela, 'KM/H', vel.centerx, linha_vel + (61 if largo else 52),
+           26 if largo else 20, COR_TEXTO, vel.width - 20)
 
-    total_blocos = 10
-    percentual = max(0.0, min(1.0, velocidade_kmh / VELOCIDADE_MAXIMA_KMH))
-    blocos_acesos = round(percentual * total_blocos)
-    bloco_largura, espaco = 7, 2
-    barra_largura = total_blocos * bloco_largura + (total_blocos - 1) * espaco
-    barra_x = centro_x - barra_largura // 2
-    barra_y = velocidade_y + 128
-    for i in range(total_blocos):
-        if i >= blocos_acesos:
-            cor_bloco = COR_APAGADO
-        elif i < 6:
-            cor_bloco = COR_VERDE
-        elif i < 8:
-            cor_bloco = COR_AMARELO
-        else:
-            cor_bloco = COR_VERMELHO
-        pygame.draw.rect(
-            tela, cor_bloco,
-            (barra_x + i * (bloco_largura + espaco), barra_y, bloco_largura, 15),
-        )
-    _texto_pixelado(
-        tela, "MAX 200", 11, COR_TEXTO, centro_x, velocidade_y + 153,
-        card_largura - 18,
-    )
+    blocos = 10
+    ativos = round(kmh / VELOCIDADE_MAXIMA_KMH * blocos)
+    espaco = 3 if largo else 2
+    bloco_largura = max(5, (vel.width - 28 - (blocos - 1) * espaco) // blocos)
+    barra_largura = blocos * bloco_largura + (blocos - 1) * espaco
+    barra_x = vel.centerx - barra_largura // 2
+    barra_y = vel.bottom - 52
+    for i in range(blocos):
+        cor = (COR_APAGADO if i >= ativos else
+               COR_VERDE if i < 6 else COR_AMARELO if i < 8 else COR_VERMELHO)
+        pygame.draw.rect(tela, cor,
+                         (barra_x + i * (bloco_largura + espaco), barra_y,
+                          bloco_largura, 16))
+    _texto(tela, 'MAX: 200', vel.centerx, vel.bottom - 20,
+           24 if largo else 19, COR_TEXTO, vel.width - 18)
