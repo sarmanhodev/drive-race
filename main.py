@@ -50,7 +50,7 @@ pygame.init()
 # 2 - CONFIGURAÇÕES DA JANELA
 # ==========================================================
 
-largura = 620
+largura = 720
 altura = 700
 
 # Mantém a área original do jogo (pista + margens)
