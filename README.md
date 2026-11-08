@@ -4,15 +4,16 @@
 
 ### A estrada não perdoa. Seu recorde também não.
 
-**Um arcade de sobrevivência sobre rodas, desenvolvido em Python e Pygame, com visual inspirado nos clássicos de 8 bits.**
+**Um arcade de sobrevivência sobre rodas, desenvolvido em Python e Pygame, com visual pixel art e trilha sonora original inspirada nos clássicos de 16 bits.**
 
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Pygame](https://img.shields.io/badge/Pygame-2.6.1-1B8D49?style=for-the-badge)
 ![Pixel Art](https://img.shields.io/badge/Estilo-Pixel%20Art-FFCC33?style=for-the-badge&labelColor=172033)
+![Áudio](https://img.shields.io/badge/%C3%81udio-Metal%2016--bit-B22222?style=for-the-badge)
 ![PyInstaller](https://img.shields.io/badge/PyInstaller-6.22.3-4381C1?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Em%20desenvolvimento-2389DA?style=for-the-badge)
 
-**[Gameplay](#-o-jogo-em-ação) · [Recursos](#-o-que-te-espera-na-pista) · [Como jogar](#-como-jogar) · [Instalação](#-instalação-e-execução) · [Criar EXE](#-gerando-o-executável-para-windows-exe)**
+**[Gameplay](#-o-jogo-em-ação) · [Recursos](#-o-que-te-espera-na-pista) · [Trilha sonora](#-trilha-sonora-e-efeitos) · [Como jogar](#-como-jogar) · [Instalação](#-instalação-e-execução) · [Criar EXE](#-gerando-o-executável-para-windows-exe)**
 
 </div>
 
@@ -56,6 +57,37 @@ Você dirige um **caminhão** em uma estrada de três faixas. Desvie de carros e
 | 🌃 **Cenário urbano** | Cidade noturna com edifícios, calçadas e postes. |
 | 📊 **HUD arcade** | Cards de pontos, fase, velocidade e recorde. |
 | 🏆 **Recorde local** | Melhor pontuação armazenada entre partidas. |
+| 🎸 **Trilha sonora dinâmica** | Três faixas originais de metal 16 bits, escolhidas conforme o cenário e a fase. |
+| 🔊 **Efeitos sonoros** | Sons de coleta de moedas e colisão. |
+| 🎵 **Música no menu** | Trilha rural desde a abertura, retornando ao menu após o Game Over. |
+
+## 🎸 Trilha sonora e efeitos
+
+O Drive Race agora tem **trilha sonora original de heavy metal com estética retrô de 16 bits**, inspirada na energia dos jogos de corrida da era Mega Drive. A música acompanha a progressão da partida, enquanto os efeitos sonoros destacam as ações na pista.
+
+### 🎼 As três trilhas
+
+| Trilha | Arquivo | Quando toca |
+| :--- | :--- | :--- |
+| 🌲 **Dust & Diesel** | `dust_diesel.wav` | Menu inicial e trecho rural da partida. |
+| 🌃 **Concrete Chaos** | `concrete_chaos.wav` | Quando o cenário urbano assume a pista, antes da fase 13. |
+| 🔥 **Redline Fury** | `redline_fury.wav` | Da **fase 13 em diante** (a partir de **3.000 pontos**), independentemente do cenário. |
+
+**Como o áudio se comporta:**
+
+- A música rural começa assim que o jogo abre, ainda no menu.
+- Ao iniciar a partida, a trilha adequada continua ou é selecionada automaticamente.
+- Na mudança de cenário ou na chegada à fase 13, a trilha muda com transição gradual de volume.
+- Em uma colisão, a música para para destacar o efeito sonoro da batida.
+- Ao pressionar `Esc` após o Game Over, a música rural volta a tocar no menu.
+
+### 🔊 Efeitos e implementação
+
+Os efeitos de **moeda coletada** e **colisão** são gerenciados por `sons.py`. As músicas são controladas por `musicas.py`, com os arquivos WAV em `assets/musicas/`.
+
+As três faixas são **pré-carregadas na inicialização** e reproduzidas por canais de áudio do Pygame. As transições de volume são atualizadas durante o loop principal, evitando o carregamento de arquivos e esperas bloqueantes no momento da troca de música.
+
+> **Para jogar com som:** mantenha os três arquivos `.wav` dentro de `assets/musicas/`. Eles também precisam ser incluídos ao empacotar o executável.
 
 ## 🕹️ Como jogar
 
@@ -86,7 +118,7 @@ A dificuldade segue evoluindo nas fases posteriores. **A 16ª fase é a última 
 ## 🛠️ Tecnologias
 
 - **Python 3** — lógica e organização modular do jogo.
-- **Pygame** — renderização, eventos, movimentação, colisões e interface.
+- **Pygame** — renderização, eventos, movimentação, colisões, interface e reprodução de áudio (`pygame.mixer`).
 - **JSON** — persistência do recorde local.
 - **PyInstaller** — empacotamento do jogo como executável para Windows.
 
@@ -158,7 +190,7 @@ python -m pip install pyinstaller pyinstaller-hooks-contrib
 python main.py
 ```
 
-> O jogo utiliza o arquivo `assets/icone.png` como ícone da janela. Mantenha a pasta `assets` junto aos arquivos Python.
+> O jogo utiliza `assets/icone.png` como ícone da janela e as trilhas WAV em `assets/musicas/`. Mantenha a pasta `assets` completa junto aos arquivos Python.
 
 ---
 
@@ -263,10 +295,12 @@ python -m PyInstaller --clean --noconfirm --onefile --windowed --name "Drive Rac
 
 Verifique se:
 
-- O menu inicial abre normalmente.
+- O menu inicial abre normalmente e **Dust & Diesel** começa a tocar.
 - A pista, os cenários, os obstáculos e as moedas são exibidos.
 - Os cards de **PONTOS, FASE, VELOCIDADE e RECORDE** aparecem corretamente.
 - As teclas de movimento e reinício funcionam.
+- A trilha muda para **Concrete Chaos** no cenário urbano e para **Redline Fury** a partir da fase 13.
+- Os sons de coleta e colisão funcionam; a música para no Game Over e retorna ao menu com `Esc`.
 - O recorde permanece salvo após fechar e abrir o jogo novamente.
 
 > **Sobre o recorde:** o jogo usa `recorde.json`. Para uma distribuição definitiva, é recomendável salvar esse arquivo em uma pasta gravável e persistente do usuário (como `%LOCALAPPDATA%\DriveRace`), evitando depender do diretório temporário usado pelo `--onefile`. Essa adaptação deve ser feita no código de persistência caso ainda não tenha sido implementada.
@@ -313,7 +347,12 @@ O erro de ordinal **não identifica sozinho qual DLL falhou**. Se persistir, ser
 
 ```text
 drive-race/
-├── assets/              # Ícone e recursos visuais
+├── assets/              # Ícone, recursos visuais e áudio
+│   ├── icone.png        # Ícone da janela
+│   ├── musicas/         # Trilhas sonoras originais em WAV
+│   │   ├── dust_diesel.wav
+│   │   ├── concrete_chaos.wav
+│   │   └── redline_fury.wav
 │   └── screenshots/     # Capturas reais usadas neste README
 ├── caminhao.py          # Desenho e movimento do caminhão
 ├── colisao.py           # Verificação de colisões
@@ -322,11 +361,13 @@ drive-race/
 ├── interface.py         # Placar, recorde e telas de aviso
 ├── main.py              # Inicialização e loop do jogo
 ├── menu.py              # Menu inicial
+├── musicas.py           # Trilhas dinâmicas e transições de volume
 ├── moedas.py            # Coleta e desenho das moedas
 ├── obstaculos.py        # Carros, motos e buracos
 ├── pista.py             # Pista, floresta e cidade
 ├── pontuacao.py         # Pontuação e persistência
 ├── recorde.json         # Recorde salvo localmente
+├── sons.py              # Efeitos de moedas e colisões
 ├── requirements.txt     # Dependências
 ├── velocidade.py        # Progressão da velocidade
 └── velocimetro.py       # Cards de fase e velocidade
@@ -336,7 +377,7 @@ drive-race/
 
 ## 🔮 Próximos passos
 
-O Drive Race continua em desenvolvimento. Algumas ideias para futuras versões são novos cenários, ajustes de equilíbrio e a publicação de uma versão executável para Windows na seção **Releases** do GitHub.
+O Drive Race continua em desenvolvimento. Algumas ideias para futuras versões são novos cenários, ajustes de equilíbrio, controles de volume e a publicação de uma versão executável para Windows na seção **Releases** do GitHub.
 
 ---
 
@@ -344,6 +385,6 @@ O Drive Race continua em desenvolvimento. Algumas ideias para futuras versões s
 
 ### 🏆 Até onde você consegue chegar?
 
-**Desenvolvido por [sarmanhodev](https://github.com/sarmanhodev) com Python, Pygame e muita vontade de sobreviver ao trânsito.** 🚛💨
+**Desenvolvido por [sarmanhodev](https://github.com/sarmanhodev) com Python, Pygame, guitarras 16 bits e muita vontade de sobreviver ao trânsito.** 🚛💨
 
 </div>
