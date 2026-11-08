@@ -5,6 +5,7 @@ Mantém as assinaturas usadas pelo main.py existente.
 
 import random
 import pygame
+from sons import tocar_moeda
 from pista import PISTA_X, PISTA_LARGURA, LARGURA_FAIXA, QUANTIDADE_FAIXAS
 
 TAMANHO = 28
@@ -232,6 +233,8 @@ def movimentar_moedas(
                 "especial": PONTOS_ESPECIAL,
             }[tipo]
             pontuacao.adicionar_pontos(pontos)
+            # Reproduz o efeito sonoro ao coletar a moeda
+            tocar_moeda()
             efeitos.append(
                 {
                     "x": moeda["rect"].centerx,
