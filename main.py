@@ -2,10 +2,17 @@ import pygame
 from pathlib import Path
 import obstaculos
 import moedas
-
+from sons import *
 from pontuacao import Pontuacao
 from dificuldade import obter_dificuldade
 from velocimetro import desenhar_velocimetro
+from musicas import (
+    inicializar_musicas,
+    atualizar_musicas,
+    atualizar_trilha,
+    parar_trilha,
+    tocar_trilha
+)
 
 from menu import desenhar_menu, processar_evento_menu
 
@@ -16,27 +23,18 @@ from pista import (
     desenhar_pista,
     definir_cenario,
     PISTA_X,
-    PISTA_LARGURA
+    PISTA_LARGURA,
 )
 
-from caminhao import (
-    desenhar_caminhao,
-    movimentar_caminhao
-)
+from caminhao import desenhar_caminhao, movimentar_caminhao
 
-from obstaculos import (
-    criar_obstaculo,
-    movimentar_obstaculos,
-    desenhar_obstaculos
-)
+from obstaculos import criar_obstaculo, movimentar_obstaculos, desenhar_obstaculos
 
 from colisao import verificar_colisao
 
-from interface import (
-    desenhar_game_over,
-    desenhar_pontuacao,
-    desenhar_aviso_fase
-)
+from interface import desenhar_game_over, desenhar_pontuacao, desenhar_aviso_fase
+
+pygame.mixer.pre_init(frequency=44100, size=-16, channels=1)
 
 
 # ==========================================================
@@ -45,6 +43,11 @@ from interface import (
 
 pygame.init()
 
+inicializar_sons()
+
+inicializar_musicas()
+
+tocar_trilha("rural", transicao_ms=0)
 
 # ==========================================================
 # 2 - CONFIGURAÇÕES DA JANELA
@@ -76,17 +79,10 @@ caminhao_altura = 120
 velocidade_caminhao = 5
 
 # Cria o retângulo do caminhão
-caminhao = pygame.Rect(
-    0,
-    0,
-    caminhao_largura,
-    caminhao_altura
-)
+caminhao = pygame.Rect(0, 0, caminhao_largura, caminhao_altura)
 
 # Centraliza o caminhão na pista
-caminhao.centerx = round(
-    PISTA_X + PISTA_LARGURA / 2
-)
+caminhao.centerx = round(PISTA_X + PISTA_LARGURA / 2)
 
 # Posiciona o caminhão na parte inferior
 caminhao.bottom = altura - 50
@@ -120,9 +116,7 @@ dificuldade_atual = obter_dificuldade(0)
 # ==========================================================
 
 # Velocidade inicial do jogo
-velocidade_atual = float(
-    dificuldade_atual["velocidade"]
-)
+velocidade_atual = float(dificuldade_atual["velocidade"])
 
 # Velocidade que desejamos alcançar
 velocidade_alvo = velocidade_atual
@@ -161,6 +155,7 @@ DURACAO_AVISO = 2000
 estado = "MENU"
 game_over = False
 
+
 executando = True
 
 
@@ -183,6 +178,10 @@ def iniciar_partida():
     game_over = False
     estado = "JOGANDO"
 
+    # Reinicia o cenário e a trilha da estrada rural.
+    definir_cenario(0)
+    atualizar_trilha("rural", 0)
+
     # Descarta eventos antigos de criação antes de reiniciar os timers.
     pygame.event.clear((EVENTO_CARRO, EVENTO_MOEDA))
 
@@ -190,7 +189,6 @@ def iniciar_partida():
     pygame.time.set_timer(EVENTO_CARRO, dificuldade_atual["intervalo"])
     pygame.time.set_timer(EVENTO_MOEDA, INTERVALO_MOEDAS)
     moedas.criar_moeda(obstaculos.obstaculos, pontuacao.pontos)
-
 
 
 # ==========================================================
@@ -204,7 +202,8 @@ while executando:
     # ------------------------------------------------------
 
     delta_time = relogio.tick(FPS) / 1000.0
-
+    
+    atualizar_musicas()
 
     # ------------------------------------------------------
     # EVENTOS DO PYGAME
@@ -248,7 +247,9 @@ while executando:
                 pygame.event.clear((EVENTO_CARRO, EVENTO_MOEDA))
                 estado = "MENU"
                 game_over = False
-
+                
+                
+                tocar_trilha("rural", transicao_ms=500)
 
     # ======================================================
     # 11 - ATUALIZAÇÃO DO JOGO
@@ -260,25 +261,18 @@ while executando:
         # VERIFICA A DIFICULDADE ATUAL
         # --------------------------------------------------
 
-        nova_dificuldade = obter_dificuldade(
-            pontuacao.pontos
-        )
+        nova_dificuldade = obter_dificuldade(pontuacao.pontos)
 
         # Verifica se houve mudança de fase
         if nova_dificuldade != dificuldade_atual:
 
             dificuldade_atual = nova_dificuldade
-            
+
             # Define a nova velocidade desejada
-            velocidade_alvo = float(
-                dificuldade_atual["velocidade"]
-            )
+            velocidade_alvo = float(dificuldade_atual["velocidade"])
 
             # Atualiza a frequência dos carros
-            pygame.time.set_timer(
-                EVENTO_CARRO,
-                dificuldade_atual["intervalo"]
-            )
+            pygame.time.set_timer(EVENTO_CARRO, dificuldade_atual["intervalo"])
 
             # Ativa o aviso da nova fase
             mostrar_aviso = True
@@ -287,58 +281,41 @@ while executando:
             tempo_aviso = pygame.time.get_ticks()
 
             # Exibe a fase no terminal
-            print(
-                f"Nova fase: {dificuldade_atual['nome']}"
-            )
+            print(f"Nova fase: {dificuldade_atual['nome']}")
 
         # --------------------------------------------------
         # ACELERAÇÃO E DESACELERAÇÃO PROGRESSIVAS
         # --------------------------------------------------
 
         velocidade_atual = atualizar_velocidade(
-            velocidade_atual,
-            velocidade_alvo,
-            delta_time
+            velocidade_atual, velocidade_alvo, delta_time
         )
 
         # --------------------------------------------------
         # MOVIMENTAÇÃO DO CAMINHÃO
         # --------------------------------------------------
 
-        movimentar_caminhao(
-            caminhao,
-            velocidade_caminhao,
-            PISTA_X,
-            PISTA_LARGURA
-        )
-
+        movimentar_caminhao(caminhao, velocidade_caminhao, PISTA_X, PISTA_LARGURA)
 
         # --------------------------------------------------
         # MOVIMENTAÇÃO DA PISTA
         # --------------------------------------------------
 
-        atualizar_pista(
-            velocidade_atual
-        )
-
+        atualizar_pista(velocidade_atual)
 
         # --------------------------------------------------
         # MOVIMENTAÇÃO DOS OBSTÁCULOS
         # --------------------------------------------------
 
-        movimentar_obstaculos(
-            altura,
-            caminhao,
-            pontuacao,
-            velocidade_atual
-        )
-
+        movimentar_obstaculos(altura, caminhao, pontuacao, velocidade_atual)
 
         # --------------------------------------------------
         # VERIFICAÇÃO DE COLISÕES (ANTES DA COLETA)
         # --------------------------------------------------
 
         if verificar_colisao(caminhao, obstaculos.obstaculos):
+            parar_trilha(0)
+            tocar_colisao()  # 💥 Som da batida
             game_over = True
             estado = "GAME_OVER"
             pygame.time.set_timer(EVENTO_CARRO, 0)
@@ -356,7 +333,7 @@ while executando:
                 pontuacao,
                 velocidade_atual,
                 delta_time,
-                obstaculos.obstaculos
+                obstaculos.obstaculos,
             )
 
         # --------------------------------------------------
@@ -365,7 +342,6 @@ while executando:
 
         # A pontuação pode ter aumentado com a coleta de moedas.
         # A nova fase será aplicada no próximo quadro.
-
 
     # ======================================================
     # 12 - DESENHO DOS ELEMENTOS
@@ -377,16 +353,17 @@ while executando:
         # ------------------------------------------------------
         # DESENHA A PISTA
         # ------------------------------------------------------
-        
+
         # Seleciona o cenário conforme a pontuação
-        definir_cenario(pontuacao.pontos)
+        cenario_atual = definir_cenario(pontuacao.pontos)
 
-        desenhar_pista(
-            tela,
-            largura,
-            altura
-        )
+        desenhar_pista(tela, largura, altura)
 
+        # Atualiza a trilha apenas durante a partida.
+        # A troca de cenário é controlada pelo pista.py.
+        if estado == "JOGANDO":
+            indice_fase = min(pontuacao.pontos // 250, 15)
+            atualizar_trilha(cenario_atual, indice_fase)
 
         # ------------------------------------------------------
         # DESENHA OS OBSTÁCULOS
@@ -395,37 +372,23 @@ while executando:
         desenhar_obstaculos(tela)
         moedas.desenhar_moedas(tela)
 
-
         # ------------------------------------------------------
         # DESENHA O CAMINHÃO
         # ------------------------------------------------------
 
-        desenhar_caminhao(
-            tela,
-            caminhao
-        )
-
+        desenhar_caminhao(tela, caminhao)
 
         # ------------------------------------------------------
         # DESENHA A PONTUAÇÃO
         # ------------------------------------------------------
 
-        desenhar_pontuacao(
-            tela,
-            pontuacao
-        )
-    
+        desenhar_pontuacao(tela, pontuacao)
+
         # ------------------------------------------------------
         # DESENHA O VELOCÍMETRO
         # ------------------------------------------------------
 
-        desenhar_velocimetro(
-            tela,
-            largura,
-            velocidade_atual,
-            dificuldade_atual["nome"]
-        )
-
+        desenhar_velocimetro(tela, largura, velocidade_atual, dificuldade_atual["nome"])
 
         # ------------------------------------------------------
         # DESENHA O AVISO DE DIFICULDADE
@@ -439,16 +402,11 @@ while executando:
 
             if tempo_decorrido < DURACAO_AVISO:
 
-                desenhar_aviso_fase(
-                    tela,
-                    LARGURA_AREA_JOGO,
-                    dificuldade_atual["nome"]
-                )
+                desenhar_aviso_fase(tela, LARGURA_AREA_JOGO, dificuldade_atual["nome"])
 
             else:
 
                 mostrar_aviso = False
-
 
         # ------------------------------------------------------
         # DESENHA O GAME OVER
@@ -456,14 +414,7 @@ while executando:
 
         if game_over:
 
-            desenhar_game_over(
-                tela,
-                LARGURA_AREA_JOGO,
-                altura,
-                pontuacao
-            )
-
-
+            desenhar_game_over(tela, LARGURA_AREA_JOGO, altura, pontuacao)
 
     # ======================================================
     # 13 - ATUALIZAÇÃO DA TELA
